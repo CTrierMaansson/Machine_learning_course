@@ -1,0 +1,109 @@
+---
+title: "NHANES diabetes"
+output: html_document
+date: "2023-05-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NHANES dataset
+
+# General
+
+Load of data
+```{r formatting, message = F}
+library(NHANES)
+library(dplyr)
+library(caret)
+data("NHANES")
+df <- NHANES %>%
+    distinct() %>% 
+    dplyr::select(c("Age", "Race1", "Education", "HHIncome", "Weight", "Height", "Pulse",
+                                 "Diabetes", "BMI", "PhysActive", "Smoke100"))%>%
+    mutate(Diabetes = as.factor(Diabetes))
+df <- na.omit(df)
+
+``` 
+
+Partition data into training and test set
+
+```{r train/test}
+set.seed(123)
+train.index<-createDataPartition(df$Diabetes, p=0.7, list=FALSE)
+
+df.train <- df[train.index,]
+df.test <- df[-train.index,]
+
+```
+
+# Without downsampling
+
+```{r control.settings}
+control.settings<-trainControl(method="cv", number=5)
+```
+
+
+```{r training}
+set.seed(123)
+glm <- train(Diabetes ~., 
+                data = df.train, 
+                method = "glm", 
+                preProc=c("center", "scale"),
+                trControl = control.settings)
+
+confusionMatrix(glm)
+```
+
+```{r test}
+test.outcome<-predict(glm, df.test)
+
+confusionMatrix(test.outcome, df.test$Diabetes, positive="Yes")
+```
+# With downsamlpling
+
+```{r control.settings with downsampling}
+control.settings.a<-trainControl(method="cv", number=5,sampling = "down")
+```
+
+```{r training with downsampling}
+set.seed(123)
+glm.a <- train(Diabetes ~., 
+                data = df.train, 
+                method = "glm", 
+                preProc=c("center", "scale"),
+                trControl = control.settings.a)
+
+confusionMatrix(glm.a)
+```
+
+```{r test with downsampling} 
+test.outcome.a<-predict(glm.a, df.test)
+
+confusionMatrix(test.outcome.a, df.test$Diabetes, positive="Yes")
+```
+# Using AUC instead of Accuracy as a metric
+```{r control.settings with downsampling AUC}
+control.settings.b<-trainControl(method="cv", number=5,sampling = "down", classProbs = TRUE, summaryFunction = twoClassSummary)
+```
+
+```{r training with downsampling AUC}
+set.seed(123)
+glm.b <- train(Diabetes ~., 
+               data = df.train, 
+               method = "glm", 
+               preProc=c("center", "scale"),
+               trControl = control.settings.b,
+               metric = "ROC")
+
+confusionMatrix(glm.b)
+glm.b$results
+```
+
+```{r test with downsampling AUC} 
+test.outcome.b<-predict(glm.b, df.test)
+
+confusionMatrix(test.outcome.b, df.test$Diabetes, positive="Yes")
+
+```
