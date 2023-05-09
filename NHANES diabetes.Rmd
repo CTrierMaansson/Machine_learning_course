@@ -21,7 +21,7 @@ data("NHANES")
 df <- NHANES %>%
     distinct() %>% 
     dplyr::select(c("Age", "Race1", "Education", "HHIncome", "Weight", "Height", "Pulse",
-                                 "Diabetes", "BMI", "PhysActive", "Smoke100"))%>%
+                                 "Diabetes", "BMI", "PhysActive", "Smoke100")) %>%
     mutate(Diabetes = as.factor(Diabetes))
 df <- na.omit(df)
 

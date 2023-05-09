@@ -1,0 +1,99 @@
+---
+title: "US crime"
+output: html_document
+date: "2023-05-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load data
+
+```{r message=F}
+df <- USArrests
+library(dplyr)
+library(stats)
+library(factoextra)
+library(cluster)
+library(usmap)
+library(tidyverse)
+df<-na.omit(df)
+```
+
+## Distance
+```{r}
+set.seed(123)
+df.scale <- scale(df)
+diss.matrix <- dist(df.scale, method = "euclidean")
+```
+
+## Clustering
+```{r}
+set.seed(123)
+clusters.h<- hclust(diss.matrix, method = "complete" )
+plot(clusters.h, cex = 0.6, hang = -1)
+```
+
+## Finding optimal number of clusters
+
+```{r}
+hclusCut <- function(x, k) list(cluster = cutree(hclust(dist(x, method="euclidian"), method="complete"), k=k))
+gap_stat <- clusGap(df.scale, FUN = hclusCut, K.max = 20, B = 100)
+fviz_gap_stat(gap_stat)
+```
+
+
+This means we choose 4 clusters
+
+## Investigating the clusters
+```{r}
+clusters.h.4<-cutree(clusters.h, k=4)
+table(clusters.h.4)
+```
+We can see that there is not an equal split of states in each cluster
+
+We add the cluster to the original data:
+
+```{r}
+df <- df %>% mutate(clusters = as.character(clusters.h.4)) %>% 
+    mutate(state = names(clusters.h.4))
+
+```
+
+We can visualize the dendrogram with the cut of 4 clsuters
+```{r, warning=F}
+fviz_dend(clusters.h, rect=TRUE,k = 4)
+```
+
+Creating the clusters diagram which visualizes the clusters with PCA
+```{r}
+set.seed(123)
+clusters.hcut<-hcut(df.scale, k=4, hc_func="hclust", hc_method="complete", hc_metric="euclidian")
+fviz_cluster(clusters.hcut)
+```
+
+Investigating the differences of the features for each cluster:
+```{r}
+df %>% pivot_longer(-c(clusters,state)) %>% 
+    ggplot(aes(y = value, x = clusters,
+               color = clusters))+
+    geom_boxplot()+
+    facet_grid(~name,scales = "free_y") +
+    scale_y_continuous(trans = "log10")+
+    theme_bw(15)
+```
+
+
+Visualizing it geographically
+```{r}
+df.red <- df %>% dplyr::select(clusters,state)
+colnames(df.red) <- c("clusters","full")
+map_df <- us_map() %>% full_join(df.red, by = "full")
+map_df <- na.omit(map_df)
+ggplot(map_df, aes(x = x, y = y,
+                   color = clusters))+
+    geom_point(size = .8)+
+    theme_bw()
+
+```

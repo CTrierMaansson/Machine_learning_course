@@ -1,0 +1,95 @@
+---
+title: "Demonstration of Principal Components Analysis"
+author: "JAS"
+date: 
+output:
+  html_document: default
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Demonstration of Unsupervised Methods 
+
+We will be using the following dataset to demonstrate application and interpretation of principal components analysis.
+
+* Breast Cancer Imaging data 
+    + Data Citation: This breast cancer database was obtained from the University of Wisconsin Hospitals, Madison from Dr.William H. Wolberg. 
+
+
+***
+
+### Load Packages 
+Ensure that all packages are installed before attempting to load. 
+
+```{r load_packages}
+library(dplyr)
+library(stats)
+library(factoextra)
+
+```
+
+### Demonstration of Principal Components Analysis
+First, we will utilize breast cancer imaging data. In this demonstration, rather than trying to predict malignancy, we are interested in determining if we can uncover the underlying constructs of the image that are explained by the nine features. In other words, can we reduce the number of features from nine down to some smaller number but still capture the needed information that was derived from the image. To accomplish this, we will apply principal components analysis to the feature data within the breast cancer dataset.
+
+***
+
+### Step 1: Load and Prepare Dataset
+Remember to replace the file path with the location where the breast cancer data are stored.
+
+Note this dataset has already been cleaned. For the purposes of this demonstration, we are treating all features as continuous and numeric. Also, malignant cases have an outcome=4, so we will first subset our data to only include these cases.
+
+```{r prepdata}
+
+setwd("C:/Users/chris/OneDrive/1PhD/Kurser-undervisning-supervision/Machine learning/R")
+
+bc.data<-read.csv("./breast-cancer-wisconsin.csv")
+
+str(bc.data)
+
+#Restrict to malignant cases
+bc.data<-bc.data[(which(bc.data$outcome==4)),]
+
+#Strip off the outcome and id variable
+bc.data.features<-(bc.data[,2:10])
+
+```
+
+### Step 2: Determine if scaling is necessary
+
+```{r scale}
+#Obtain and compare means and standard deviations across features. na.rm removes the missings
+colMeans(bc.data.features, na.rm=TRUE)
+apply(bc.data.features, 2, sd, na.rm=TRUE)
+
+#some difference in means and mitoses is different than others. So decide to center and scale
+
+```
+
+### Step 3: Conduct the Principal Components Analysis
+The function prcomp() will center and scale the variables and then identify the principal components
+
+```{r pca}
+
+bc.pca<-prcomp( ~., data=bc.data.features, center=TRUE, scale=TRUE, na.action=na.omit)
+
+#Can compare sds used to scale with the sds above to ensure they are close.
+bc.pca$scale
+
+#Generates scree plot
+fviz_eig(bc.pca)
+
+#view results of pca. Note the first three components are needed to explain at least 75% of the variance
+summary(bc.pca)
+
+#Identify how features loaded on the different components
+bc.pca$rotation
+
+#Value of each component for each row/cases
+plot(bc.pca$x)
+```
